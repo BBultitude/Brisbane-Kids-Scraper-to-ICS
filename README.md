@@ -28,13 +28,20 @@ git clone https://github.com/yourusername/brisbane-kids-scraper.git
 cd brisbane-kids-scraper
 ```
 
-### 2. Install Dependencies
+### 2. Set Up Virtual Environment (Recommended)
+
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install Dependencies
 
 ```bash
 pip install playwright
 ```
 
-### 3. Install Playwright Browsers
+### 4. Install Playwright Browsers
 
 Playwright needs to download browser binaries (Chromium) to function:
 
@@ -49,7 +56,7 @@ playwright install chromium
 Simply run the script:
 
 ```bash
-python scraper.py
+python3 brisbanekids-scraper.py
 ```
 
 The script will:
@@ -72,10 +79,76 @@ to:
 browser = p.chromium.launch(headless=True)
 ```
 
+### Automated Scheduling with Cron
+
+To keep your calendar automatically updated, you can schedule the scraper to run regularly using cron.
+
+#### Setup Script
+
+Create a shell script `run_scraper.sh`:
+
+```bash
+#!/bin/bash
+export DISPLAY=:0
+cd /home/bryan/scraper-project
+source venv/bin/activate
+python3 brisbanekids-scraper.py
+```
+
+Make it executable:
+
+```bash
+chmod +x run_scraper.sh
+```
+
+**Note**: Change `/home/bryan/scraper-project` to your actual project path.
+
+#### Add to Crontab
+
+Edit your user crontab:
+
+```bash
+crontab -e
+```
+
+Add one of these lines depending on how often you want to run it:
+
+```bash
+# Run every Monday at 8 AM
+0 8 * * 1 /home/bryan/scraper-project/run_scraper.sh
+
+# Run on the 1st of every month at 9 AM
+0 9 1 * * /home/bryan/scraper-project/run_scraper.sh
+
+# Run every Sunday at 7 AM
+0 7 * * 0 /home/bryan/scraper-project/run_scraper.sh
+```
+
+**Important**: When running via cron with headless mode disabled, make sure:
+- `DISPLAY=:0` is set (already in the script above)
+- You're logged into a graphical session
+- Or switch to headless mode for cron jobs
+
+#### Recommended Cron Setup
+
+For automated calendar updates, I recommend:
+1. **Set headless mode to `True`** in the Python script
+2. **Run monthly** (since the script already grabs current + next month)
+3. **Redirect output to a log file** for debugging
+
+Updated crontab entry with logging:
+
+```bash
+# Run on the 1st of every month at 9 AM, log output
+0 9 1 * * /home/bryan/scraper-project/run_scraper.sh >> /home/bryan/scraper-project/scraper.log 2>&1
+```
+
 ### Output
 
 After running, you'll get:
 - **brisbanekids.ics** - An ICS calendar file containing all scraped events
+
+This file is **overwritten** each time the script runs, so it always contains the most current events.
 
 ### Importing to Your Calendar
 
@@ -177,6 +250,13 @@ Modify the final write statement:
 with open("brisbanekids.ics", "w", encoding="utf-8") as f:
 ```
 
+### Script Location and Paths
+
+If you move the script or run it from cron, make sure to update:
+- The path in `run_scraper.sh`
+- The crontab entry path
+- Consider using absolute paths in the Python script for the output file
+
 ### Adding More Event Details
 
 If Brisbane Kids includes additional fields in their JSON-LD, you can capture them by:
@@ -204,6 +284,12 @@ If the website is slow, increase timeout values:
 ```python
 page.goto(url, timeout=60000)  # Increase from 60000 (60 seconds)
 ```
+
+### Cron job runs but doesn't create file
+- Check the log file: `tail -f ~/scraper-project/scraper.log`
+- Verify paths are absolute in both the shell script and crontab
+- Ensure the virtual environment is activated in the shell script
+- Make sure you're using headless mode for unattended runs
 
 ## Limitations
 
